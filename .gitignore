@@ -1,0 +1,11 @@
+.*.swp
+node_modules
+.envrc
+.shadow-cljs
+public/js
+build
+pnpm-lock.yaml
+workspace
+native/build
+native/pocketsync.keystore
+native/*.aab
