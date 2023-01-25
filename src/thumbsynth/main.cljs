@@ -31,6 +31,9 @@
               :bars (rc/inline "sprites/bars.svg")
               :exex (rc/inline "sprites/times.svg")})
 
+(def music-keyboard-map {:black [1 3 nil 7 9 11 nil]
+                         :white [0 2 4 6 8 10 12]})
+
 (defonce state (local-storage (r/atom initial-state)
                               :pocketsync-settings
                               (fn [*state]
@@ -176,30 +179,24 @@
      [:p [:button.ok {:on-click #(swap! state update :show-menu not)} "Ok"]]]]
    [:div]])
 
+(defn component-keyboard []
+  [:div.keyboard
+   (for [[c keymap] music-keyboard-map]
+     [:div.keyboard-row {:key c}
+      (for [k keymap]
+        (if (nil? k)
+          [:button.note.skip {:key (js/Math.random)}]
+          [:button.note {:key k :class c :data-note k}]))])])
+
 (defn component-main [state]
-  (let [bpm (get-bpm @state)
-        swing (get-swing @state)
+  (let [;bpm (get-bpm @state)
+        ;swing (get-swing @state)
         playing (@state :playing)
         device-volume (@state :device-volume)]
     [:div#app
      [:div
       [component-menu-toggle state]
-      [:div#tempo.input-group
-       [:button {:disabled (< (/ bpm 2) bpm-min)
-                 :on-click #(set-bpm! state (/ bpm 2))} "½"]
-       [:span.clickable {:class (when (<= bpm bpm-min) "disabled")
-                         :on-click #(set-bpm! state (- bpm 1))} "–"]
-       [:div#bpm bpm]
-       [:span.clickable {:class (when (>= bpm bpm-max) "disabled")
-                         :on-click #(set-bpm! state (+ bpm 1))} "+"]
-       [:button {:disabled (> (* bpm 2) bpm-max)
-                 :on-click #(set-bpm! state (* bpm 2))} "2"]]
-      [:div.input-group
-       [component-slider :bpm bpm bpm-min bpm-max]]
-      [:div.input-group
-       [:button#tap {:on-click #(tap! state)} "tap"]]
-      [:div.input-group
-       [component-slider :swing swing 0 75]]
+      [:p "Hello"]
       [:div.input-group
        [:div.highlight.device-warning
         (when (< device-volume 0.9)
@@ -207,7 +204,12 @@
        [:button#play {:on-click #(if playing (stop! state) (play! state))
                       :ref (fn [el]
                              (when el
-                               (aset el "innerHTML" (if playing (:stop buttons) (:play buttons)))))}]]]]))
+                               (aset el "innerHTML"
+                                     (if playing 
+                                       (:stop buttons)
+                                       (:play buttons)))))}]]
+      [:div.input-group
+       [component-keyboard]]]]))
 
 (defn component-pages [state]
   (if (:show-menu @state)

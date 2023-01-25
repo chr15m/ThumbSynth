@@ -8,6 +8,7 @@
   --color-1: #F7F1ED;
   --color-1-shadow: #97928e;
   --color-2: #444349;
+  --color-2-shadow: #242425;
   --color-3: #e7ad1b;
   --color-3-shadow: #947B39;
 }
@@ -58,6 +59,10 @@ main {
   margin: 0 auto;
   padding: 0px;
   display: flex;
+  background-repeat: no-repeat;
+  background-size: 100%;
+  background-image: url(stripes.svg);
+  background-position: bottom center fixed;
 }
 
 h1 {
@@ -400,4 +405,52 @@ button#play svg {
   height: 48px;
   margin: 0px;
   padding: 0px;
+}
+
+div.keyboard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+div.keyboard-row {
+  display: flex;
+  width: 100%;
+  margin: 0px;
+  padding: 0px;
+}
+
+div.keyboard .note {
+  flex-grow: 1;
+  height: 64px;
+  border-top: 2px solid var(--color-1-shadow);
+  border-left: 2px solid var(--color-1-shadow);
+  border-right: 2px solid var(--color-1-shadow);
+}
+
+div.keyboard .note.white {
+  height: 128px;
+}
+
+div.keyboard .note.white:active {
+  height: 122px;
+}
+
+div.keyboard .note.black {
+  background-color: var(--color-2);
+  border-top: 2px solid var(--color-1-shadow);
+  border-left: 2px solid var(--color-1-shadow);
+  border-right: 2px solid var(--color-1-shadow);
+  border-bottom: 4px solid var(--color-1-shadow);
+  transform: translate(40px, 64px);
+}
+
+div.keyboard .note.black:active {
+  height: 60px;
+  border-bottom: 0px solid var(--color-1-shadow);
+}
+
+div.keyboard .note.skip {
+  visibility: hidden;
 }
