@@ -407,11 +407,18 @@ button#play svg {
   padding: 0px;
 }
 
+/* music keyboard */
+
 div.keyboard {
   width: 100%;
+  /*width: 100vw;
+  position: absolute;
+  left: 0px;*/
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin: 0px;
+  padding: 0px;
 }
 
 div.keyboard-row {
@@ -421,36 +428,54 @@ div.keyboard-row {
   padding: 0px;
 }
 
-div.keyboard .note {
-  flex-grow: 1;
-  height: 64px;
-  border-top: 2px solid var(--color-1-shadow);
-  border-left: 2px solid var(--color-1-shadow);
-  border-right: 2px solid var(--color-1-shadow);
+div.keyboard-row:first-child {
+  padding: 6px;
 }
 
-div.keyboard .note.white {
+div.keyboard-row:nth-child(2) {
+  background-color: var(--color-2-shadow);
+  border-radius: 6px;
+  padding: 6px;
+}
+
+div.keyboard .key {
+  border: none;
+  background-color: var(--color-1);
+  color: var(--color-2);
+  border-bottom: 6px solid var(--color-1-shadow);
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  flex-grow: 1;
+  height: 64px;
+  margin: 0px 1px;
+}
+
+div.keyboard .key.active {
+  border-bottom: 0px solid var(--color-1-shadow);
+  margin-top: 1px;
+}
+
+div.keyboard .key.white {
   height: 128px;
 }
 
-div.keyboard .note.white:active {
-  height: 122px;
+div.keyboard .key.white.active {
+  height: 127px;
 }
 
-div.keyboard .note.black {
+div.keyboard .key.black {
   background-color: var(--color-2);
-  border-top: 2px solid var(--color-1-shadow);
-  border-left: 2px solid var(--color-1-shadow);
-  border-right: 2px solid var(--color-1-shadow);
-  border-bottom: 4px solid var(--color-1-shadow);
-  transform: translate(40px, 64px);
+  border-bottom: 6px solid var(--color-2-shadow);
+  transform: translate(50%, 74px);
 }
 
-div.keyboard .note.black:active {
-  height: 60px;
+div.keyboard .key.black.active {
   border-bottom: 0px solid var(--color-1-shadow);
+  margin-top: 1px;
+  height: 63px;
 }
 
-div.keyboard .note.skip {
+div.keyboard .key.skip {
   visibility: hidden;
 }

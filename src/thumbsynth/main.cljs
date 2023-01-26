@@ -180,13 +180,27 @@
    [:div]])
 
 (defn component-keyboard []
-  [:div.keyboard
-   (for [[c keymap] music-keyboard-map]
-     [:div.keyboard-row {:key c}
-      (for [k keymap]
-        (if (nil? k)
-          [:button.note.skip {:key (js/Math.random)}]
-          [:button.note {:key k :class c :data-note k}]))])])
+  (let [keyboard-state (r/atom {:keydown {}})]
+    (fn []
+      [:div.keyboard {:on-mouse-down #(swap! keyboard-state assoc :down true)
+                      :on-mouse-up #(swap! keyboard-state dissoc :down)
+                      :data-keys (-> @keyboard-state :keydown pr-str)}
+       (for [[c keymap] music-keyboard-map]
+         [:div.keyboard-row {:key c}
+          (for [k keymap]
+            (if (nil? k)
+              [:div.key.skip {:key (js/Math.random)}]
+              [:div.key {:key k :class [c (when (-> @keyboard-state :keydown (get k)) "active")] :data-note k
+                         :on-mouse-down
+                         #(swap! keyboard-state assoc-in [:keydown k] true)
+                         :on-mouse-out
+                         #(swap! keyboard-state update-in [:keydown] dissoc k)
+                         :on-mouse-up
+                         #(swap! keyboard-state update-in [:keydown] dissoc k)
+                         :on-mouse-over
+                         #(when (:down @keyboard-state)
+                            (swap! keyboard-state assoc-in
+                                   [:keydown k] true))}]))])])))
 
 (defn component-main [state]
   (let [;bpm (get-bpm @state)
@@ -209,7 +223,7 @@
                                        (:stop buttons)
                                        (:play buttons)))))}]]
       [:div.input-group
-       [component-keyboard]]]]))
+       [component-keyboard state]]]]))
 
 (defn component-pages [state]
   (if (:show-menu @state)
