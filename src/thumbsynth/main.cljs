@@ -6,6 +6,7 @@
     [reagent.dom :as rdom]
     [alandipert.storage-atom :refer [local-storage]]
     ["react-piano" :refer [Piano]]
+    ["soundfont-player" :as Soundfont]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -21,7 +22,8 @@
                     :taps []
                     :audio-source nil
                     :context nil
-                    :show-menu false})
+                    :show-menu false
+                    :playing-notes {}})
 
 (def bpm-min 60)
 (def bpm-max 240)
@@ -182,14 +184,13 @@
    [:div]])
 
 (defn component-main [state]
-  (let [;bpm (get-bpm @state)
-        ;swing (get-swing @state)
-        playing (@state :playing)
-        device-volume (@state :device-volume)]
+  (let [playing (:playing @state)
+        device-volume (:device-volume @state)
+        instrument (:instrument @state)
+        playing-notes (:playing-notes @state)]
     [:div#app
      [:div
       [component-menu-toggle state]
-      [:p "Hello"]
       [:div.input-group
        [:div.highlight.device-warning
         (when (< device-volume 0.9)
@@ -202,11 +203,20 @@
                                        (:stop buttons)
                                        (:play buttons)))))}]]
       [:div.input-group
-       [:div.keyboard-container
-        [:> Piano {:noteRange #js {:first 60 :last 71}
-                   :useTouchEvents true
-                   :playNote (fn [midiNumber] (js/console.log "down" midiNumber))
-                   :stopNote (fn [midiNumber] (js/console.log "up" midiNumber))}]]]]]))
+       (when instrument
+         [:div.keyboard-container
+          [:> Piano {:noteRange #js {:first 48 :last 59}
+                     :useTouchEvents true
+                     :playNote (fn [midiNumber]
+                                 (js/console.log "down" midiNumber)
+                                 (swap! state assoc-in [:playing-notes midiNumber]
+                                        (.play instrument midiNumber)))
+                     :stopNote (fn [midiNumber]
+                                 (js/console.log "up" midiNumber)
+                                 (-> (get playing-notes midiNumber) .stop)
+                                 (swap! state update-in [:playing-notes] dissoc midiNumber))}]])]
+      [:p "Hello"]
+      ]]))
 
 (defn component-pages [state]
   (if (:show-menu @state)
@@ -217,8 +227,21 @@
   (rdom/render [component-pages state]
                (-> js/document (.querySelector "main"))))
 
+(def hostname "https://d1pzp51pvbm36p.cloudfront.net/")
+(defn name-to-url [n, soundfont, fmt] (str hostname soundfont "/" n "-" fmt ".js"))
+
+(defn load-soundfont [audio-context instrument callback]
+  (->
+    (.instrument Soundfont audio-context instrument #js {:format "mp3"
+                                                         :soundfont "FluidR3_GM"
+                                                         :nameToUrl name-to-url
+                                                         ;:from hostname
+                                                         })
+    (.then #(callback %))))
+
 (defn main! []
   (manage-audio-context-ios #(:context @state))
   (poll-device-volume 250 #(swap! state assoc :device-volume %))
+  (load-soundfont (js/AudioContext.) "acoustic_grand_piano" #(swap! state assoc :instrument %))
   (on-device-ready #(lock-screen-orientation "portrait-primary"))
   (reload!))
