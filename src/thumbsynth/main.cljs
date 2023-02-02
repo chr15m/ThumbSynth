@@ -1,9 +1,11 @@
 (ns thumbsynth.main
   (:require
+    [applied-science.js-interop :as j]
     [shadow.resource :as rc]
     [reagent.core :as r]
     [reagent.dom :as rdom]
     [alandipert.storage-atom :refer [local-storage]]
+    ["react-piano" :refer [Piano]]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -47,7 +49,7 @@
 (defn make-click-track-audio-buffer [{:keys [context bpm swing] :as *state}]
   (let [beat-seconds (/ (/ 60 bpm) 2)
         beats 2
-        sample-rate (aget context "sampleRate")
+        sample-rate (j/get context :sampleRate)
         frames-per-beat (int (* beat-seconds sample-rate))
         frame-count (* beats frames-per-beat)
         swing-frames (-> swing (/ 100) (* frames-per-beat))
@@ -179,55 +181,6 @@
      [:p [:button.ok {:on-click #(swap! state update :show-menu not)} "Ok"]]]]
    [:div]])
 
-(defn handle-down! [keyboard-state ev]
-  (.preventDefault ev)
-  (let [id (or (j/get ev :identifier) :mouse)]
-    (swap! keyboard-state assoc-in [:down id] true)))
-
-(defn handle-up! [keyboard-state ev]
-  (let [id (or (j/get ev :identifier) :mouse)]
-    (swap! keyboard-state update-in [:down] dissoc id)))
-
-(defn is-down [*keyboard-state]
-  (-> *keyboard-state :down keys count (> 0)))
-
-(defn key-down! [keyboard-state k ev]
-  (handle-down! keyboard-state ev)
-  (swap! keyboard-state assoc-in [:keydown k] true))
-
-(defn key-up! [keyboard-state k _ev]
-  (swap! keyboard-state update-in [:keydown] dissoc k))
-
-; (defn handle-move [keyboard-state ev])
-
-(defn component-keyboard [keyboard-state]
-  [:div.keyboard {:data-keys (-> @keyboard-state :keydown pr-str)
-                  :on-mouse-down #(handle-down! keyboard-state %)
-                  :on-touch-start #(handle-down! keyboard-state %)}
-   [:pre (-> @keyboard-state :keydown pr-str)]
-   [:pre (-> @keyboard-state :down pr-str)]
-   [:pre (pr-str (-> @keyboard-state :down keys))]
-   (doall (for [[c keymap] music-keyboard-map]
-            [:div.keyboard-row {:key c}
-             (doall (for [k keymap]
-                      (if (nil? k)
-                        [:div.key.skip {:key (js/Math.random)}]
-                        (let [start-fn #(key-down! keyboard-state k %)
-                              end-fn #(key-up! keyboard-state k %)
-                              move-fn #(when (is-down @keyboard-state)
-                                         (.preventDefault %)
-                                         (key-down! keyboard-state k %))]
-                          [:div.key {:key k
-                                     :class [c (when (-> @keyboard-state :keydown (get k)) "active")]
-                                     :data-note k
-                                     :on-mouse-down start-fn
-                                     :on-touch-start start-fn
-                                     :on-mouse-out end-fn
-                                     :on-mouse-up end-fn
-                                     :on-touch-end end-fn
-                                     :on-mouse-over move-fn
-                                     :on-touch-move move-fn}]))))]))])
-
 (defn component-main [state]
   (let [;bpm (get-bpm @state)
         ;swing (get-swing @state)
@@ -249,7 +202,11 @@
                                        (:stop buttons)
                                        (:play buttons)))))}]]
       [:div.input-group
-       [component-keyboard state]]]]))
+       [:div.keyboard-container
+        [:> Piano {:noteRange #js {:first 60 :last 71}
+                   :useTouchEvents true
+                   :playNote (fn [midiNumber] (js/console.log "down" midiNumber))
+                   :stopNote (fn [midiNumber] (js/console.log "up" midiNumber))}]]]]]))
 
 (defn component-pages [state]
   (if (:show-menu @state)

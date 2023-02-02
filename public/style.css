@@ -7,10 +7,13 @@
 :root {
   --color-1: #F7F1ED;
   --color-1-shadow: #97928e;
+  --color-1-highlight: #FFFFFF;
   --color-2: #444349;
   --color-2-shadow: #242425;
+  --color-2-highlight: #5B5A60;
   --color-3: #e7ad1b;
   --color-3-shadow: #947B39;
+  --color-3-highlight: #F7CA5A;
 }
 
 * {
@@ -20,6 +23,13 @@
   font-size: 24px;
   padding: 0.25em;
   margin: 0.25em;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: none;
+  touch-action: none;
 }
 
 svg text {
@@ -409,73 +419,61 @@ button#play svg {
 
 /* music keyboard */
 
-div.keyboard {
-  width: 100%;
-  /*width: 100vw;
-  position: absolute;
-  left: 0px;*/
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.keyboard-container, .keyboard-container * {
   margin: 0px;
   padding: 0px;
-}
-
-div.keyboard-row {
-  display: flex;
   width: 100%;
-  margin: 0px;
-  padding: 0px;
 }
 
-div.keyboard-row:first-child {
-  padding: 6px;
+.ReactPiano__Keyboard {
+  display: flex;
+  height: 128px;
+  width: 100%;
+  justify-content: space-between;
 }
 
-div.keyboard-row:nth-child(2) {
-  background-color: var(--color-2-shadow);
+.ReactPiano__Key {
+  display: inline-block;
+  height: 64px;
+  width: unset !important;
   border-radius: 6px;
-  padding: 6px;
-}
-
-div.keyboard .key {
-  border: none;
+  margin: 0px;
+  border: 1px solid silver;
+  flex-grow: 1;
   background-color: var(--color-1);
   color: var(--color-2);
   border-bottom: 6px solid var(--color-1-shadow);
   border-radius: 6px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  flex-grow: 1;
-  height: 64px;
-  margin: 0px 1px;
+
 }
 
-div.keyboard .key.active {
-  border-bottom: 0px solid var(--color-1-shadow);
-  margin-top: 1px;
-}
-
-div.keyboard .key.white {
+.ReactPiano__Key--natural {
+  background-color: var(--color-1);
+  color: var(--color-2);
   height: 128px;
 }
 
-div.keyboard .key.white.active {
-  height: 127px;
-}
-
-div.keyboard .key.black {
+.ReactPiano__Key--accidental {
   background-color: var(--color-2);
   border-bottom: 6px solid var(--color-2-shadow);
-  transform: translate(50%, 74px);
+  position: relative;
+  top: -0px !important;
+  left: 0px !important;
+  height: 64px;
+  margin-left: -7%;
+  margin-right: -7%;
 }
 
-div.keyboard .key.black.active {
+.ReactPiano__Key--active {
   border-bottom: 0px solid var(--color-1-shadow);
-  margin-top: 1px;
-  height: 63px;
 }
 
-div.keyboard .key.skip {
-  visibility: hidden;
+.ReactPiano__Key--natural.ReactPiano__Key--active {
+  background-color: var(--color-1-highlight);
+}
+
+.ReactPiano__Key--accidental.ReactPiano__Key--active {
+  background-color: var(--color-2-highlight);
 }
