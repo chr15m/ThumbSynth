@@ -213,7 +213,8 @@
                                         (.play instrument midiNumber)))
                      :stopNote (fn [midiNumber]
                                  (js/console.log "up" midiNumber)
-                                 (-> (get playing-notes midiNumber) .stop)
+                                 (let [playing-note (get playing-notes midiNumber)]
+                                   (when playing-note (.stop playing-note)))
                                  (swap! state update-in [:playing-notes] dissoc midiNumber))}]])]
       [:p "Hello"]
       ]]))
