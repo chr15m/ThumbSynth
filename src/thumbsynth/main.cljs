@@ -227,8 +227,7 @@
   (rdom/render [component-pages state]
                (-> js/document (.querySelector "main"))))
 
-(def hostname "https://d1pzp51pvbm36p.cloudfront.net/")
-(defn name-to-url [n, soundfont, fmt] (str hostname soundfont "/" n "-" fmt ".js"))
+(defn name-to-url [n, _soundfont, fmt] (str "/" n "-" fmt ".js"))
 
 (defn load-soundfont [audio-context instrument callback]
   (->
