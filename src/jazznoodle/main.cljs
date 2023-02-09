@@ -1,4 +1,4 @@
-(ns thumbsynth.main
+(ns jazznoodle.main
   (:require
     [applied-science.js-interop :as j]
     [shadow.resource :as rc]
