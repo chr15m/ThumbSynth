@@ -158,6 +158,9 @@ button {
   border-radius: 6px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 button:active {
@@ -221,6 +224,10 @@ span.icon svg {
   height: 48px;
   margin: 0px;
   padding: 0px;
+}
+
+button span.icon svg {
+  fill: var(--color-2);
 }
 
 /*** specific ***/
@@ -428,7 +435,7 @@ button#tap:active {
   min-height: 6ch;
 }
 
-button#play {
+.rounded {
   border-radius: 64px;
   width: 128px;
   height: 64px;
@@ -438,11 +445,11 @@ button#play {
   flex-grow: 0;
 }
 
-button#play:active {
+.rounded:active {
   height: 60px;
 }
 
-button#play svg {
+.rounded svg {
   height: 48px;
   margin: 0px;
   padding: 0px;

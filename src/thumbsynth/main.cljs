@@ -35,7 +35,9 @@
 (def buttons {:play (rc/inline "sprites/button-play.svg")
               :stop (rc/inline "sprites/button-stop.svg")
               :bars (rc/inline "sprites/bars.svg")
-              :exex (rc/inline "sprites/times.svg")})
+              :exex (rc/inline "sprites/times.svg")
+              :loop (rc/inline "sprites/refresh.svg")
+              :metronome (rc/inline "sprites/metronome.svg")})
 
 (def music-keyboard-map {:black [1 3 nil 7 9 11 nil]
                          :white [0 2 4 6 8 10 12]})
@@ -213,13 +215,12 @@
        [:div.highlight.device-warning
         (when (< device-volume 0.9)
           "Set device volume to max for sync.")]
-       [:button#play {:on-click #(if playing (stop! state) (play! state))
-                      :ref (fn [el]
-                             (when el
-                               (aset el "innerHTML"
-                                     (if playing 
-                                       (:stop buttons)
-                                       (:play buttons)))))}]]]]))
+       [:span.rounded [component-icon (:metronome buttons)]]
+       [:button.rounded [component-icon (:loop buttons)]]
+       [:button.rounded {:on-click #(if playing (stop! state) (play! state))}
+        [component-icon (if playing
+                          (:stop buttons)
+                          (:play buttons))]]]]]))
 
 (defn component-pages [state]
   (if (:show-menu @state)
