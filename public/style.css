@@ -16,8 +16,13 @@
   --color-3-hi: #F7CA5A;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+* {
   font-family: "Courier Prime", serif;
   font-weight: bold;
   font-size: 24px;
@@ -128,6 +133,20 @@ input {
   border: 2px solid var(--color-2);
   background-color: var(--color-1);
   border-radius: 6px;
+}
+
+select {
+  appearance: none;
+  margin: 0px;
+  padding-right: 1.5em;
+  background-color: var(--color-1);
+  color: var(--color-2);
+  border: 2px solid var(--color-1-lo);
+  border-radius: 6px;
+  cursor: pointer;
+  background-image: url('data:image/svg+xml,<svg width="24" height="24" viewBox="0 0 1792 1792" xmlns="http://www.w3.org/2000/svg"><path fill="grey" d="M1408 704q0 26-19 45l-448 448q-19 19-45 19t-45-19l-448-448q-19-19-19-45t19-45 45-19h896q26 0 45 19t19 45z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 button {
@@ -309,12 +328,27 @@ span.icon svg {
   user-select: none;
 }
 
+.input-group > * {
+  flex-grow: 1;
+  margin: 0px;
+  flex-basis: content;
+  width: 0px;
+}
+
+.input-group > * + * {
+  margin-left: 6px;
+}
+
 .highlight {
   color: var(--color-3);
 }
 
 #menu {
   margin-top: 8px;
+}
+
+#menu > * {
+  flex-grow: unset;
 }
 
 #tempo {
@@ -401,6 +435,7 @@ button#play {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-grow: 0;
 }
 
 button#play:active {

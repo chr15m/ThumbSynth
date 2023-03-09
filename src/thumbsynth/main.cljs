@@ -6,6 +6,9 @@
     [reagent.dom :as rdom]
     [alandipert.storage-atom :refer [local-storage]]
     ["react-piano" :refer [Piano]]
+    ["@tonaljs/midi" :refer [midiToNoteName] :rename {midiToNoteName note-name}]
+    ["@tonaljs/scale-dictionary" :refer [entries] :rename {entries scales}]
+    ;["@tonaljs/tonal" :refer [transpose]]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -188,6 +191,13 @@
     [:div#app
      [:div
       [component-menu-toggle state]
+      [:div.input-group
+       [:select {:name "root-note"}
+        (for [[v l] (map (fn [n] [n (note-name n #js {:sharps true})]) (range 60 72))]
+          [:option {:key l :value v} l])]
+       [:select {:name "scale"}
+        (for [l (map #(.-name %) (scales))]
+          [:option {:key l} l])]]
       [:div.input-group
        [:div.keyboard-container
         [:> Piano {:noteRange #js {:first 48 :last 59}
