@@ -230,6 +230,10 @@ button span.icon svg {
   fill: var(--color-2);
 }
 
+.touchpad span.icon svg {
+  fill: var(--color-2);
+}
+
 /*** specific ***/
 
 #loading-image {
@@ -457,15 +461,18 @@ button#tap:active {
 
 /* touch pad */
 
-#touchpad {
+.touchpad {
   border: 2px solid var(--color-3);
   background-color: var(--color-3-lo);
   border-radius: 6px;
   width: 100%;
   min-height: 30vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-#touchpad:active {
+.touchpad:active {
   background-color: var(--color-3);  
 }
 
