@@ -69,10 +69,6 @@ main {
   margin: 0 auto;
   padding: 0px;
   display: flex;
-  background-repeat: no-repeat;
-  background-size: 100%;
-  background-image: url(stripes.svg);
-  background-position: bottom center fixed;
 }
 
 h1 {
@@ -415,6 +411,16 @@ button#play svg {
   height: 48px;
   margin: 0px;
   padding: 0px;
+}
+
+/* touch pad */
+
+#touchpad {
+  border: 2px solid var(--color-3);
+  background-color: var(--color-3-shadow);
+  border-radius: 6px;
+  width: 100%;
+  min-height: 30vh;
 }
 
 /* music keyboard */
