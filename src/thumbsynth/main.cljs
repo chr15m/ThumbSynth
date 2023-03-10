@@ -7,8 +7,7 @@
     [alandipert.storage-atom :refer [local-storage]]
     ["react-piano" :refer [Piano]]
     ["@tonaljs/midi" :refer [midiToNoteName] :rename {midiToNoteName note-name}]
-    ["@tonaljs/scale-dictionary" :refer [entries] :rename {entries scales}]
-    ;["@tonaljs/tonal" :refer [transpose]]
+    ["@tonaljs/scale" :as scale]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -19,6 +18,7 @@
 
 (def bpm-min 60)
 (def bpm-max 240)
+(def scales (scale/names))
 
 (def music-keyboard-map {:black [1 3 nil 7 9 11 nil]
                          :white [0 2 4 6 8 10 12]})
@@ -192,12 +192,20 @@
             in your phone settings."]])
      [:h3 "Privacy"]
      [:p
-      "The app does not access, collect, use, or share any of your personal data.
+      "The app does not access, collect, use,
+      or share any of your personal data.
       We don't collect any personal information."]
      [:p [:a {:href "https://dopeloop.ai/app-privacy-policy.html"}
           "Full privacy policy"] "."]
      [:p [:button.ok {:on-click #(swap! state update :show-menu not)} "Ok"]]]]
    [:div]])
+
+(defn compute-notes [*state]
+  (let [scale-name (-> *state :notes :scale-name)
+        scale-root (-> *state :notes :root)
+        scale (scale/get (str scale-root " " scale-name))
+        notes (j/get scale :notes)]
+    notes))
 
 (defn component-main [state]
   (let [playing (:playing @state)
@@ -206,6 +214,8 @@
      [:div
       [component-menu-toggle state]
       [:div.input-group
+       [:pre (pr-str (compute-notes @state))]]
+      [:div.input-group
        [:label
         [:span #_ {:class "right"} "sqr"]
         [:input {:type "range" :min 0 :max 1 :step 1}]]
@@ -213,30 +223,42 @@
         [:span #_ {:class "right"} "rez"]
         [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
       [:div.input-group
-       [:select {:name "root-note"}
-        (for [[v l] (map (fn [n] [n (note-name n #js {:sharps true})])
-                         (range 60 72))]
-          [:option {:key l :value v} l])]
-       [:select {:name "scale"}
-        (for [l (map #(.-name %) (scales))]
+       [:select {:name "root-note"
+                 :on-change
+                 (fn [ev]
+                   (swap! state assoc-in [:notes :root]
+                          (-> ev .-target .-value)))}
+        (for [l (map (fn [n] (note-name n #js {:sharps true
+                                               :pitchClass true}))
+                     (range 0 12))]
+          [:option {:key l :value l} l])]
+       [:select {:name "scale"
+                 :on-change
+                 (fn [ev]
+                   (swap! state assoc-in [:notes :scale-name]
+                          (-> ev .-target .-value)))}
+        (for [l scales]
           [:option {:key l} l])]]
       [:div.input-group
        [:div.keyboard-container
-        [:> Piano {:noteRange #js {:first 60 :last 71}
+        [:> Piano {;:disabled true
+                   :activeNotes [62 65 68]
+                   :noteRange #js {:first 60 :last 71}
                    :useTouchEvents true
                    :playNote (fn [midiNumber]
                                (js/console.log "down" midiNumber)
-                               (swap! state assoc-in [:playing-notes midiNumber]))
+                               #_ (swap! state assoc-in [:playing-notes
+                                                         midiNumber]))
                    :stopNote (fn [midiNumber]
                                (js/console.log "up" midiNumber)
-                               (swap! state update-in [:playing-notes]
-                                      dissoc midiNumber))}]]]
+                               #_ (swap! state update-in [:playing-notes]
+                                         dissoc midiNumber))}]]]
       [:div.input-group
        [:div.touchpad]
        [:div.touchpad [component-icon (:thumb buttons)]]]
       [:label
-        [:span #_ {:class "right"} "vol"]
-        [:input {:type "range" :min 0 :max 1 :step 0.01}]]
+       [:span #_ {:class "right"} "vol"]
+       [:input {:type "range" :min 0 :max 1 :step 0.01}]]
       [:div.input-group
        [:div.highlight.device-warning
         (when (< device-volume 0.9)

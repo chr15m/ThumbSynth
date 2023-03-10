@@ -2,6 +2,8 @@
   "name": "ThumbSynth",
   "version": "0.0.1",
   "devDependencies": {
+    "@tonaljs/midi": "^4.9.0",
+    "@tonaljs/scale": "^4.12.0",
     "browser-sync": "^2.27.11",
     "cljs-dopeloop": "github:chr15m/cljs-dopeloop#504f24c",
     "concurrently": "^7.6.0",
@@ -12,10 +14,7 @@
     "react-piano": "github:chr15m/react-piano#touch-glis-built",
     "shadow-cljs": "2.20.19",
     "soundfont-player": "^0.12.0",
-    "storage-atom": "github:chr15m/storage-atom#ea2ba37",
-    "@tonaljs/chord-dictionary": "^4.8.0",
-    "@tonaljs/midi": "^4.9.0",
-    "@tonaljs/scale-dictionary": "^4.8.0"
+    "storage-atom": "github:chr15m/storage-atom#ea2ba37"
   },
   "scripts": {
     "watch": "shadow-cljs watch app"
