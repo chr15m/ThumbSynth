@@ -97,7 +97,8 @@
     (.close (-> @state :audio :context))
     (swap! state #(-> %
                       (dissoc :playing)
-                      (update-in [:audio] dissoc :audio-source :audio-buffer :context)))
+                      (update-in [:audio] dissoc
+                                 :audio-source :audio-buffer :context)))
     (stop-source! click-track-audio-source)))
 
 (defn average [coll]
@@ -171,25 +172,30 @@
    [:div
     [component-menu-toggle state]
     [:div
-     [:p [:a {:href "https://dopeloop.ai" :target "_BLANK"} [:button "Get more apps"]]]
+     [:p [:a {:href "https://dopeloop.ai" :target "_BLANK"}
+          [:button "Get more apps"]]]
      [:h3 "Help"]
      [:p "Use this app with a pocket operator device."]
-     [:p "Plug a 3.5mm stereo cable from this device into the left input of your pocket operator.
+     [:p "Plug a 3.5mm stereo cable from this device into the left input
+         of your pocket operator.
          The sync signal is sent over the audio cable."]
      [:p "Turn the volume all the way up on this device."]
-     [:p "Set sync mode on your pocket operator to SY4 or SY5 (sync pass-through)
-         using the top-right button + BPM."]
+     [:p "Set sync mode on your pocket operator to SY4 or SY5
+         (sync pass-through) using the top-right button + BPM."]
      [:p "Press play to start the sync signal."]
      (when (not (on-ios?))
        [:<>
         [:h3 "Tips"]
-        [:p "Huawei phones and maybe others have a 'battery saving' mode which lowers the headphone level.
-            This prevents sync from working. You can turn off this mode in your phone settings."]])
+        [:p "Huawei phones and maybe others have a 'battery saving' mode
+            which lowers the headphone level.
+            This prevents sync from working. You can turn off this mode
+            in your phone settings."]])
      [:h3 "Privacy"]
      [:p
       "The app does not access, collect, use, or share any of your personal data.
       We don't collect any personal information."]
-     [:p [:a {:href "https://dopeloop.ai/app-privacy-policy.html"} "Full privacy policy"] "."]
+     [:p [:a {:href "https://dopeloop.ai/app-privacy-policy.html"}
+          "Full privacy policy"] "."]
      [:p [:button.ok {:on-click #(swap! state update :show-menu not)} "Ok"]]]]
    [:div]])
 
@@ -208,21 +214,23 @@
         [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
       [:div.input-group
        [:select {:name "root-note"}
-        (for [[v l] (map (fn [n] [n (note-name n #js {:sharps true})]) (range 60 72))]
+        (for [[v l] (map (fn [n] [n (note-name n #js {:sharps true})])
+                         (range 60 72))]
           [:option {:key l :value v} l])]
        [:select {:name "scale"}
         (for [l (map #(.-name %) (scales))]
           [:option {:key l} l])]]
       [:div.input-group
        [:div.keyboard-container
-        [:> Piano {:noteRange #js {:first 48 :last 59}
+        [:> Piano {:noteRange #js {:first 60 :last 71}
                    :useTouchEvents true
                    :playNote (fn [midiNumber]
                                (js/console.log "down" midiNumber)
                                (swap! state assoc-in [:playing-notes midiNumber]))
                    :stopNote (fn [midiNumber]
                                (js/console.log "up" midiNumber)
-                               (swap! state update-in [:playing-notes] dissoc midiNumber))}]]]
+                               (swap! state update-in [:playing-notes]
+                                      dissoc midiNumber))}]]]
       [:div.input-group
        [:div.touchpad]
        [:div.touchpad [component-icon (:thumb buttons)]]]
