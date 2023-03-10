@@ -17,20 +17,31 @@
                            lock-screen-orientation
                            on-device-ready]]))
 
+(def bpm-min 60)
+(def bpm-max 240)
+
+(def music-keyboard-map {:black [1 3 nil 7 9 11 nil]
+                         :white [0 2 4 6 8 10 12]})
+
 (def initial-state {:bpm 90 ; persisted
                     :swing 0 ; persisted
                     :playing false
                     :device-volume 1
+                    :audio {:context nil
+                            :source nil
+                            :buffer nil}
                     :taps []
-                    :audio-source nil
-                    :context nil
                     :show-menu false
                     :playing-notes {}})
 
-(def bpm-min 60)
-(def bpm-max 240)
-
 (def local-storage-keys [:bpm :swing])
+
+(defonce state (local-storage (r/atom initial-state)
+                              :pocketsync-settings
+                              (fn [*state]
+                                (select-keys *state local-storage-keys))
+                              (fn [*state]
+                                (merge initial-state *state))))
 
 (def buttons {:play (rc/inline "sprites/button-play.svg")
               :stop (rc/inline "sprites/button-stop.svg")
@@ -39,16 +50,6 @@
               :loop (rc/inline "sprites/refresh.svg")
               :thumb (rc/inline "sprites/thumbs-up.svg")
               :metronome (rc/inline "sprites/metronome.svg")})
-
-(def music-keyboard-map {:black [1 3 nil 7 9 11 nil]
-                         :white [0 2 4 6 8 10 12]})
-
-(defonce state (local-storage (r/atom initial-state)
-                              :pocketsync-settings
-                              (fn [*state]
-                                (select-keys *state local-storage-keys))
-                              (fn [*state]
-                                (merge initial-state *state))))
 
 (defn create-new-context [*state]
   (assoc *state :context (audio-context.)))
@@ -86,13 +87,17 @@
              #(-> % make-click-track-audio-buffer play-click-track!)))))
 
 (defn play! [state]
-  (swap! state assoc :playing true :context (audio-context.))
+  (swap! state #(-> %
+                    (assoc :playing true)
+                    (assoc-in [:audio :context] (audio-context.))))
   (update-loop! state))
 
 (defn stop! [state]
   (let [click-track-audio-source (@state :audio-source)]
-    (.close (:context @state))
-    (swap! state dissoc :playing :audio-source :audio-buffer :context)
+    (.close (-> @state :audio :context))
+    (swap! state #(-> %
+                      (dissoc :playing)
+                      (update-in [:audio] dissoc :audio-source :audio-buffer :context)))
     (stop-source! click-track-audio-source)))
 
 (defn average [coll]
@@ -245,7 +250,7 @@
                (-> js/document (.querySelector "main"))))
 
 (defn main! []
-  (manage-audio-context-ios #(:context @state))
+  (manage-audio-context-ios #(-> @state :audio :context))
   (poll-device-volume 250 #(swap! state assoc :device-volume %))
   (on-device-ready #(lock-screen-orientation "portrait-primary"))
   (reload!))
