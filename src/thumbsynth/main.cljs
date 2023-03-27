@@ -6,9 +6,14 @@
     [reagent.dom :as rdom]
     [alandipert.storage-atom :refer [local-storage]]
     ["react-piano" :refer [Piano]]
-    ["@tonaljs/midi" :refer [midiToNoteName] :rename {midiToNoteName note-name}]
+    ["@tonaljs/midi"
+     :refer [midiToNoteName]
+     :rename {midiToNoteName note-name}]
     ["@tonaljs/scale" :as scale]
-    ["@tonaljs/note" :refer [midi]]
+    ["@tonaljs/note" :refer [midi freq]]
+    ["virtual-audio-graph"
+     :refer [gain oscillator default]
+     :rename {default create-graph}]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -16,6 +21,8 @@
                            poll-device-volume on-ios?
                            lock-screen-orientation
                            on-device-ready]]))
+
+(aset js/window "cg" create-graph)
 
 (def bpm-min 60)
 (def bpm-max 240)
@@ -101,6 +108,44 @@
                       (update-in [:audio] dissoc
                                  :audio-source :audio-buffer :context)))
     (stop-source! click-track-audio-source)))
+
+(defn make-graph [wave-form note volume]
+  (j/lit
+    {0 (gain "output" #js {:gain volume})
+     1 (oscillator 0 #js {:type wave-form
+                          :frequency (freq note)})}))
+
+(defn event-pos-to-note-params [ev]
+  (let [el (j/get ev :currentTarget)
+        box (.getBoundingClientRect el)
+        l (j/get box :left)
+        t (j/get box :top)
+        w (- (j/get box :right) l)
+        h (- (j/get box :bottom) t)
+        x (j/get ev :clientX)
+        y (j/get ev :clientY)
+        horizontal (-> x (- l) (/ w))
+        vertical (-> y (- t) (/ h))]
+    {:note (-> horizontal (* 127) note-name)
+     :vol vertical}))
+
+(defn update-oscillator [*state {:keys [note vol]}]
+  (update-in *state [:audio-graph]
+             (fn [audio-graph]
+               (when audio-graph
+                 (.update audio-graph (make-graph "square" note vol)))
+               audio-graph)))
+
+(defn start-oscillator [*state note-params]
+  (-> *state
+      (assoc :audio-graph (create-graph))
+      (update-oscillator note-params)))
+
+(defn stop-oscillator [*state _ev]
+  (-> *state
+      (update-in [:audio-graph]
+                 #(when % (.update % (j/lit {})) nil))
+      (dissoc :audio-graph)))
 
 (defn average [coll]
   (/ (reduce + coll) (count coll)))
@@ -257,7 +302,15 @@
                                          dissoc midiNumber))}]]]
       [:div.input-group
        [:div.touchpad]
-       [:div.touchpad [component-icon (:thumb buttons)]]]
+       [:div.touchpad
+        {:on-pointer-down #(swap! state start-oscillator
+                                  (event-pos-to-note-params %))
+         :on-pointer-move #(swap! state update-oscillator
+                                  (event-pos-to-note-params %))
+         :on-pointer-leave #(swap! state stop-oscillator %)
+         :on-pointer-out #(swap! state stop-oscillator %)
+         :on-pointer-up #(swap! state stop-oscillator %)}
+        [component-icon (:thumb buttons)]]]
       [:label
        [:span #_ {:class "right"} "vol"]
        [:input {:type "range" :min 0 :max 1 :step 0.01}]]

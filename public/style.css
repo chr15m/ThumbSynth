@@ -476,6 +476,11 @@ button#tap:active {
   background-color: var(--color-3);  
 }
 
+.touchpad > * {
+  pointer-events: none;
+}
+
+
 /* music keyboard */
 
 .keyboard-container, .keyboard-container * {

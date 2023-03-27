@@ -14,7 +14,8 @@
     "react-piano": "github:chr15m/react-piano#touch-glis-built",
     "shadow-cljs": "2.20.19",
     "soundfont-player": "^0.12.0",
-    "storage-atom": "github:chr15m/storage-atom#ea2ba37"
+    "storage-atom": "github:chr15m/storage-atom#ea2ba37",
+    "virtual-audio-graph": "^1.2.0"
   },
   "scripts": {
     "watch": "shadow-cljs watch app"
