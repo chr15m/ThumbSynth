@@ -8,6 +8,7 @@
     ["react-piano" :refer [Piano]]
     ["@tonaljs/midi" :refer [midiToNoteName] :rename {midiToNoteName note-name}]
     ["@tonaljs/scale" :as scale]
+    ["@tonaljs/note" :refer [midi]]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
                            stop-source!
@@ -200,21 +201,23 @@
      [:p [:button.ok {:on-click #(swap! state update :show-menu not)} "Ok"]]]]
    [:div]])
 
-(defn compute-notes [*state]
+(defn compute-scale [*state]
   (let [scale-name (-> *state :notes :scale-name)
         scale-root (-> *state :notes :root)
-        scale (scale/get (str scale-root " " scale-name))
-        notes (j/get scale :notes)]
-    notes))
+        scale (scale/get (str scale-root " " scale-name))]
+    scale))
 
 (defn component-main [state]
   (let [playing (:playing @state)
-        device-volume (:device-volume @state)]
+        device-volume (:device-volume @state)
+        scale (compute-scale @state)
+        notes (j/get scale :notes)
+        midi-notes (map #(midi (str % "4")) (j/get scale :notes))]
     [:div#app
      [:div
       [component-menu-toggle state]
       [:div.input-group
-       [:pre (pr-str (compute-notes @state))]]
+       [:pre (pr-str notes)]]
       [:div.input-group
        [:label
         [:span #_ {:class "right"} "sqr"]
@@ -240,9 +243,8 @@
         (for [l scales]
           [:option {:key l} l])]]
       [:div.input-group
-       [:div.keyboard-container
-        [:> Piano {;:disabled true
-                   :activeNotes [62 65 68]
+       [:div.keyboard-container {:style {:pointer-events "none"}}
+        [:> Piano {:activeNotes midi-notes
                    :noteRange #js {:first 60 :last 71}
                    :useTouchEvents true
                    :playNote (fn [midiNumber]

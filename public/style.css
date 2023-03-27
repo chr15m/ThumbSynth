@@ -497,7 +497,7 @@ button#tap:active {
   width: unset !important;
   border-radius: 6px;
   margin: 0px;
-  border: 1px solid silver;
+  border: 2px solid var(--color-2);
   flex-grow: 1;
   background-color: var(--color-1);
   color: var(--color-2);
@@ -530,9 +530,13 @@ button#tap:active {
 }
 
 .ReactPiano__Key--natural.ReactPiano__Key--active {
-  background-color: var(--color-1-hi);
+  background-color: var(--color-3-hi);
+  border-color: var(--color-3-lo);
+  border-bottom: 2px solid var(--color-3);
 }
 
 .ReactPiano__Key--accidental.ReactPiano__Key--active {
-  background-color: var(--color-2-hi);
+  background-color: var(--color-3-lo);
+  border-color: var(--color-2);
+  border-bottom: 2px solid var(--color-2);
 }
