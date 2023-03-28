@@ -12,7 +12,7 @@
     ["@tonaljs/scale" :as scale]
     ["@tonaljs/note" :refer [midi freq]]
     ["virtual-audio-graph"
-     :refer [gain oscillator default]
+     :refer [gain oscillator biquadFilter default]
      :rename {default create-graph}]
     [dopeloop.main :refer [audio-context
                            seamless-loop-audio-buffer!
@@ -109,10 +109,15 @@
                                  :audio-source :audio-buffer :context)))
     (stop-source! click-track-audio-source)))
 
-(defn make-graph [wave-form note volume]
+(defn make-graph [wave-form {:keys [note cutoff-note]}]
+  (print (freq cutoff-note))
   (j/lit
-    {0 (gain "output" #js {:gain volume})
-     1 (oscillator 0 #js {:type wave-form
+    {0 (gain "output" #js {:gain 0.5})
+     1 (biquadFilter 0 #js {:type "lowpass"
+                            :Q 4
+                            :gain 4
+                            :frequency (freq cutoff-note)})
+     2 (oscillator 1 #js {:type wave-form
                           :frequency (freq note)})}))
 
 (defn event-pos-to-note-params [ev]
@@ -127,13 +132,13 @@
         horizontal (-> x (- l) (/ w))
         vertical (-> y (- t) (/ h))]
     {:note (-> horizontal (* 127) note-name)
-     :vol vertical}))
+     :cutoff-note (-> (- 1 vertical) (* 96) (+ 32) note-name)}))
 
-(defn update-oscillator [*state {:keys [note vol]}]
+(defn update-oscillator [*state note-params]
   (update-in *state [:audio-graph]
              (fn [audio-graph]
                (when audio-graph
-                 (.update audio-graph (make-graph "square" note vol)))
+                 (.update audio-graph (make-graph "square" note-params)))
                audio-graph)))
 
 (defn start-oscillator [*state note-params]
