@@ -22,8 +22,6 @@
                            lock-screen-orientation
                            on-device-ready]]))
 
-(aset js/window "cg" create-graph)
-
 (def bpm-min 60)
 (def bpm-max 240)
 (def scales (scale/names))
@@ -38,6 +36,8 @@
                     :audio {:context nil
                             :source nil
                             :buffer nil}
+                    :notes {:scale-name "major"
+                            :root "C"}
                     :taps []
                     :show-menu false
                     :playing-notes {}})
@@ -45,7 +45,7 @@
 (def local-storage-keys [:bpm :swing])
 
 (defonce state (local-storage (r/atom initial-state)
-                              :pocketsync-settings
+                              :thumbsynth-settings
                               (fn [*state]
                                 (select-keys *state local-storage-keys))
                               (fn [*state]
@@ -110,7 +110,6 @@
     (stop-source! click-track-audio-source)))
 
 (defn make-graph [wave-form {:keys [note cutoff-note]}]
-  (print (freq cutoff-note))
   (j/lit
     {0 (gain "output" #js {:gain 0.5})
      1 (biquadFilter 0 #js {:type "lowpass"
@@ -120,7 +119,7 @@
      2 (oscillator 1 #js {:type wave-form
                           :frequency (freq note)})}))
 
-(defn event-pos-to-note-params [ev]
+(defn event-pos-to-note-params [midi-notes ev]
   (let [el (j/get ev :currentTarget)
         box (.getBoundingClientRect el)
         l (j/get box :left)
@@ -130,8 +129,11 @@
         x (j/get ev :clientX)
         y (j/get ev :clientY)
         horizontal (-> x (- l) (/ w))
-        vertical (-> y (- t) (/ h))]
-    {:note (-> horizontal (* 127) note-name)
+        vertical (-> y (- t) (/ h))
+        octave (* horizontal 5)
+        note-index (int (* (- octave (int octave)) (count midi-notes)))
+        note (nth midi-notes note-index)]
+    {:note (note-name (+ note (+ (* (int octave) 12) -36)))
      :cutoff-note (-> (- 1 vertical) (* 96) (+ 32) note-name)}))
 
 (defn update-oscillator [*state note-params]
@@ -284,14 +286,16 @@
         (for [l (map (fn [n] (note-name n #js {:sharps true
                                                :pitchClass true}))
                      (range 0 12))]
-          [:option {:key l :value l} l])]
+          [:option {:key l
+                    :selected (= l (-> @state :notes :root))} l])]
        [:select {:name "scale"
                  :on-change
                  (fn [ev]
                    (swap! state assoc-in [:notes :scale-name]
                           (-> ev .-target .-value)))}
         (for [l scales]
-          [:option {:key l} l])]]
+          [:option {:key l
+                    :selected (= l (-> @state :notes :scale-name))} l])]]
       [:div.input-group
        [:div.keyboard-container {:style {:pointer-events "none"}}
         [:> Piano {:activeNotes midi-notes
@@ -309,9 +313,9 @@
        [:div.touchpad]
        [:div.touchpad
         {:on-pointer-down #(swap! state start-oscillator
-                                  (event-pos-to-note-params %))
+                                  (event-pos-to-note-params midi-notes %))
          :on-pointer-move #(swap! state update-oscillator
-                                  (event-pos-to-note-params %))
+                                  (event-pos-to-note-params midi-notes %))
          :on-pointer-leave #(swap! state stop-oscillator %)
          :on-pointer-out #(swap! state stop-oscillator %)
          :on-pointer-up #(swap! state stop-oscillator %)}
