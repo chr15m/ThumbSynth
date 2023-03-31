@@ -61,7 +61,7 @@
               :metronome (rc/inline "sprites/metronome.svg")})
 
 (defn create-new-context [*state]
-  (assoc *state :context (audio-context.)))
+  (assoc-in *state [:audio :context] (audio-context.)))
 
 (defn make-graph [graph {:keys [note cutoff-note wave-form rez on]}]
   (let [t (j/get graph :currentTime)
@@ -359,10 +359,11 @@
                (-> js/document (.querySelector "main"))))
 
 (defn main! []
+  (swap! state create-new-context)
   (manage-audio-context-ios #(-> @state :audio :context))
   (poll-device-volume 250 #(swap! state assoc :device-volume %))
   (on-device-ready #(lock-screen-orientation "portrait-primary"))
-  (let [audio-graph (create-graph)]
+  (let [audio-graph (create-graph #js {:audioContext (-> @state :audio :context)})]
     (add-watch state :audio-watcher
                (fn [_k _a old-state new-state]
                  (update-audio-from-state audio-graph
