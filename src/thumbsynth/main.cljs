@@ -22,6 +22,7 @@
                            lock-screen-orientation
                            on-device-ready]]))
 
+(def ios (on-ios?))
 (def bpm-min 60)
 (def bpm-max 240)
 (def scales (scale/names))
@@ -62,21 +63,33 @@
 (defn create-new-context [*state]
   (assoc *state :context (audio-context.)))
 
-(defn make-graph [wave-form {:keys [note cutoff-note]}]
-  (j/lit
-    {0 (gain "output" #js {:gain 0.5})
-     1 (biquadFilter 0 #js {:type "lowpass"
-                            :Q 4
-                            :gain 4
-                            :frequency (freq cutoff-note)})
-     2 (oscillator 1 #js {:type wave-form
-                          :frequency (freq note)})}))
+(defn make-graph [graph wave-form {:keys [note cutoff-note on]}]
+  (let [t (j/get graph :currentTime)
+        gain-value (or
+                     (j/get-in graph
+                               [ :virtualNodes 0 :audioNode :gain :value])
+                     0)]
+    (j/lit
+      {0 (gain "output"
+               (if on
+                 (j/lit {:gain
+                         [["setValueAtTime" gain-value t]
+                          ["linearRampToValueAtTime" 0.5 (+ t 0.1)]]})
+                 (j/lit {:gain
+                         [["setValueAtTime" gain-value t]
+                          ["setTargetAtTime" 0 t 0.05]]})))
+       1 (biquadFilter 0 #js {:type "lowpass"
+                              :Q 4
+                              :gain 4
+                              :frequency (freq cutoff-note)})
+       2 (oscillator 1 #js {:type wave-form
+                            :frequency (freq note)})})))
 
 (defn update-audio-from-state [graph old-audio-params new-audio-params]
   (when (not= old-audio-params new-audio-params)
     (.update graph
              (if new-audio-params
-               (make-graph "square" new-audio-params)    
+               (make-graph graph "square" new-audio-params)
                #js {}))))
 
 (defn make-click-track-audio-buffer [{:keys [context bpm swing] :as *state}]
@@ -144,10 +157,10 @@
      :cutoff-note (-> (- 1 vertical) (* 96) (+ 32) note-name)}))
 
 (defn update-oscillator [*state note-params]
-  (assoc *state :audio-params note-params))
+  (update-in *state [:audio-params] merge note-params {:on true}))
 
 (defn stop-oscillator [*state _ev]
-  (-> *state (dissoc :audio-params)))
+  (assoc-in *state [:audio-params :on] false))
 
 (defn average [coll]
   (/ (reduce + coll) (count coll)))
@@ -307,7 +320,7 @@
        [:div.touchpad
         {:on-pointer-down #(swap! state update-oscillator
                                   (event-pos-to-note-params midi-notes %))
-         :on-pointer-move #(when (> (j/get % :pressure) 0)
+         :on-pointer-move #(when (or (> (j/get % :pressure) 0) ios)
                              (swap! state update-oscillator
                                     (event-pos-to-note-params midi-notes %)))
          :on-pointer-leave #(swap! state stop-oscillator %)
