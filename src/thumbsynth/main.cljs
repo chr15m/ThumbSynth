@@ -15,8 +15,6 @@
      :refer [gain oscillator biquadFilter default]
      :rename {default create-graph}]
     [dopeloop.main :refer [audio-context
-                           seamless-loop-audio-buffer!
-                           stop-source!
                            manage-audio-context-ios
                            poll-device-volume on-ios?
                            lock-screen-orientation
@@ -37,6 +35,11 @@
                     :audio {:context nil
                             :source nil
                             :buffer nil}
+                    :audio-params {:rez 2
+                                   :note "C5"
+                                   :cutoff-note "C5"
+                                   :wave-form "0"
+                                   :on false}
                     :notes {:scale-name "major"
                             :root "C"}
                     :taps []
@@ -92,53 +95,6 @@
                (make-graph graph new-audio-params)
                #js {}))))
 
-(defn make-click-track-audio-buffer [{:keys [context bpm swing] :as *state}]
-  (let [beat-seconds (/ (/ 60 bpm) 2)
-        beats 2
-        sample-rate (j/get context :sampleRate)
-        frames-per-beat (int (* beat-seconds sample-rate))
-        frame-count (* beats frames-per-beat)
-        swing-frames (-> swing (/ 100) (* frames-per-beat))
-        buffer (.createBuffer context 2 frame-count sample-rate)]
-    (doseq [b [0]]
-      (let [array-buffer (.getChannelData buffer b)]
-        (doseq [beat (range beats) i (range frames-per-beat)]
-          (aset array-buffer
-                (+ i (* beat frames-per-beat))
-                (if
-                  (if (= (mod beat 2) 0)
-                    (< i 882)
-                    (and (< (- i swing-frames) 882)
-                         (> i swing-frames)))
-                  1.0
-                  -0.01)))))
-    (assoc *state :audio-buffer buffer)))
-
-(defn play-click-track! [{:keys [context audio-buffer audio-source] :as *state}]
-  (assoc *state :audio-source
-         (seamless-loop-audio-buffer! context audio-buffer audio-source)))
-
-(defn update-loop! [state]
-  (let [{:keys [playing]} @state]
-    (when playing
-      (swap! state
-             #(-> % make-click-track-audio-buffer play-click-track!)))))
-
-(defn play! [state]
-  (swap! state #(-> %
-                    (assoc :playing true)
-                    (assoc-in [:audio :context] (audio-context.))))
-  (update-loop! state))
-
-(defn stop! [state]
-  (let [click-track-audio-source (@state :audio-source)]
-    (.close (-> @state :audio :context))
-    (swap! state #(-> %
-                      (dissoc :playing)
-                      (update-in [:audio] dissoc
-                                 :audio-source :audio-buffer :context)))
-    (stop-source! click-track-audio-source)))
-
 (defn event-pos-to-note-params [midi-notes ev]
   (let [el (j/get ev :currentTarget)
         box (.getBoundingClientRect el)
@@ -187,41 +143,25 @@
               bpm)]
     (assoc *state :bpm bpm :taps taps)))
 
-(defn tap! [state]
-  (let [previous-state @state
-        updated-state (swap! state new-tap)]
-    (when (not= updated-state previous-state)
-      (update-loop! state))))
-
 (defn update-val! [state k ev]
   (swap! state
          assoc-in k (if (number? ev) ev (int (-> ev .-target .-value)))))
 
-(defn set-bpm! [state v]
-  (update-val! state [:bpm] v)
-  (update-loop! state))
-
-(defn get-bpm [*state]
-  (-> *state :bpm int (min bpm-max) (max bpm-min)))
-
-(defn get-swing [*state]
-  (-> *state :swing int (min 100) (max 0)))
-
 (defn component-icon [svg]
   [:span.icon {:ref (fn [el] (when el (aset el "innerHTML" svg)))}])
 
-(defn component-slider [k value min-val max-val]
-  (let [midpoint (/ (+ min-val max-val) 2)]
-    [:label
-     [:span (when (< value midpoint) {:class "right"}) (name k)]
-     [:input
-      {:type "range"
-       :min min-val
-       :max max-val
-       :on-change #(update-val! state [k] %)
-       :on-mouse-up #(update-loop! state)
-       :on-touch-end #(update-loop! state)
-       :value value}]]))
+#_ (defn component-slider [k value min-val max-val]
+     (let [midpoint (/ (+ min-val max-val) 2)]
+       [:label
+        [:span (when (< value midpoint) {:class "right"}) (name k)]
+        [:input
+         {:type "range"
+          :min min-val
+          :max max-val
+          :on-change #(update-val! state [k] %)
+          :on-mouse-up #(update-loop! state)
+          :on-touch-end #(update-loop! state)
+          :value value}]]))
 
 (defn component-menu-toggle [state]
   [:div#menu.input-group
@@ -283,13 +223,15 @@
             [:span "saw"])
           [:input {:type "range" :min 0 :max 1 :step 1
                    :value wave-form
-                   :on-change #(swap! state assoc-in [:audio-params :wave-form] (-> % .-target .-value))}]])
+                   :on-change #(swap! state assoc-in [:audio-params :wave-form]
+                                      (-> % .-target .-value))}]])
        (let [rez (-> @state :audio-params :rez)]
          [:label
           [:span (when (< rez 10) {:class "right"}) "rez"]
           [:input {:type "range" :min 0 :max 20 :step 1
                    :value rez
-                   :on-change #(swap! state assoc-in [:audio-params :rez] (-> % .-target .-value))}]])]
+                   :on-change #(swap! state assoc-in [:audio-params :rez]
+                                      (-> % .-target .-value))}]])]
       [:div.input-group
        [:select {:name "root-note"
                  :value (-> @state :notes :root)
@@ -344,7 +286,7 @@
           "Set device volume to max for sync.")]
        [:span.rounded [component-icon (:metronome buttons)]]
        [:button.rounded [component-icon (:loop buttons)]]
-       [:button.rounded {:on-click #(if playing (stop! state) (play! state))}
+       [:button.rounded
         [component-icon (if playing
                           (:stop buttons)
                           (:play buttons))]]]]]))
