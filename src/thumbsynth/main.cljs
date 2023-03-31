@@ -62,6 +62,23 @@
 (defn create-new-context [*state]
   (assoc *state :context (audio-context.)))
 
+(defn make-graph [wave-form {:keys [note cutoff-note]}]
+  (j/lit
+    {0 (gain "output" #js {:gain 0.5})
+     1 (biquadFilter 0 #js {:type "lowpass"
+                            :Q 4
+                            :gain 4
+                            :frequency (freq cutoff-note)})
+     2 (oscillator 1 #js {:type wave-form
+                          :frequency (freq note)})}))
+
+(defn update-audio-from-state [graph old-audio-params new-audio-params]
+  (when (not= old-audio-params new-audio-params)
+    (.update graph
+             (if new-audio-params
+               (make-graph "square" new-audio-params)    
+               #js {}))))
+
 (defn make-click-track-audio-buffer [{:keys [context bpm swing] :as *state}]
   (let [beat-seconds (/ (/ 60 bpm) 2)
         beats 2
@@ -109,16 +126,6 @@
                                  :audio-source :audio-buffer :context)))
     (stop-source! click-track-audio-source)))
 
-(defn make-graph [wave-form {:keys [note cutoff-note]}]
-  (j/lit
-    {0 (gain "output" #js {:gain 0.5})
-     1 (biquadFilter 0 #js {:type "lowpass"
-                            :Q 4
-                            :gain 4
-                            :frequency (freq cutoff-note)})
-     2 (oscillator 1 #js {:type wave-form
-                          :frequency (freq note)})}))
-
 (defn event-pos-to-note-params [midi-notes ev]
   (let [el (j/get ev :currentTarget)
         box (.getBoundingClientRect el)
@@ -137,22 +144,10 @@
      :cutoff-note (-> (- 1 vertical) (* 96) (+ 32) note-name)}))
 
 (defn update-oscillator [*state note-params]
-  (update-in *state [:audio-graph]
-             (fn [audio-graph]
-               (when audio-graph
-                 (.update audio-graph (make-graph "square" note-params)))
-               audio-graph)))
-
-(defn start-oscillator [*state note-params]
-  (-> *state
-      (assoc :audio-graph (create-graph))
-      (update-oscillator note-params)))
+  (assoc *state :audio-params note-params))
 
 (defn stop-oscillator [*state _ev]
-  (-> *state
-      (update-in [:audio-graph]
-                 #(when % (.update % (j/lit {})) nil))
-      (dissoc :audio-graph)))
+  (-> *state (dissoc :audio-params)))
 
 (defn average [coll]
   (/ (reduce + coll) (count coll)))
@@ -263,13 +258,10 @@
   (let [playing (:playing @state)
         device-volume (:device-volume @state)
         scale (compute-scale @state)
-        notes (j/get scale :notes)
         midi-notes (map #(midi (str % "4")) (j/get scale :notes))]
     [:div#app
      [:div
       [component-menu-toggle state]
-      [:div.input-group
-       [:pre (pr-str notes)]]
       [:div.input-group
        [:label
         [:span #_ {:class "right"} "sqr"]
@@ -279,23 +271,25 @@
         [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
       [:div.input-group
        [:select {:name "root-note"
+                 :value (-> @state :notes :root)
                  :on-change
                  (fn [ev]
                    (swap! state assoc-in [:notes :root]
                           (-> ev .-target .-value)))}
-        (for [l (map (fn [n] (note-name n #js {:sharps true
-                                               :pitchClass true}))
-                     (range 0 12))]
-          [:option {:key l
-                    :selected (= l (-> @state :notes :root))} l])]
+        (doall
+          (for [l (map (fn [n] (note-name n #js {:sharps true
+                                                 :pitchClass true}))
+                       (range 0 12))]
+            [:option {:key l} l]))]
        [:select {:name "scale"
+                 :value (-> @state :notes :scale-name)
                  :on-change
                  (fn [ev]
                    (swap! state assoc-in [:notes :scale-name]
                           (-> ev .-target .-value)))}
-        (for [l scales]
-          [:option {:key l
-                    :selected (= l (-> @state :notes :scale-name))} l])]]
+        (doall
+          (for [l scales]
+            [:option {:key l} l]))]]
       [:div.input-group
        [:div.keyboard-container {:style {:pointer-events "none"}}
         [:> Piano {:activeNotes midi-notes
@@ -310,12 +304,12 @@
                                #_ (swap! state update-in [:playing-notes]
                                          dissoc midiNumber))}]]]
       [:div.input-group
-       [:div.touchpad]
        [:div.touchpad
-        {:on-pointer-down #(swap! state start-oscillator
+        {:on-pointer-down #(swap! state update-oscillator
                                   (event-pos-to-note-params midi-notes %))
-         :on-pointer-move #(swap! state update-oscillator
-                                  (event-pos-to-note-params midi-notes %))
+         :on-pointer-move #(when (> (j/get % :pressure) 0)
+                             (swap! state update-oscillator
+                                    (event-pos-to-note-params midi-notes %)))
          :on-pointer-leave #(swap! state stop-oscillator %)
          :on-pointer-out #(swap! state stop-oscillator %)
          :on-pointer-up #(swap! state stop-oscillator %)}
@@ -347,4 +341,10 @@
   (manage-audio-context-ios #(-> @state :audio :context))
   (poll-device-volume 250 #(swap! state assoc :device-volume %))
   (on-device-ready #(lock-screen-orientation "portrait-primary"))
+  (let [audio-graph (create-graph)]
+    (add-watch state :audio-watcher
+               (fn [_k _a old-state new-state]
+                 (update-audio-from-state audio-graph
+                                          (:audio-params old-state)
+                                          (:audio-params new-state)))))
   (reload!))
