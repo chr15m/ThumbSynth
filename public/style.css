@@ -545,3 +545,21 @@ button#tap:active {
   border-color: var(--color-2);
   border-bottom: 2px solid var(--color-2);
 }
+
+@media screen and (max-height: 800px) {
+  .ReactPiano__Keyboard {
+    height: 64px;
+  }
+
+  .ReactPiano__Key {
+    height: 32px;
+  }
+
+  .ReactPiano__Key--natural {
+    height: 64px;
+  }
+
+  .ReactPiano__Key--accidental {
+    height: 32px;
+  }
+}
