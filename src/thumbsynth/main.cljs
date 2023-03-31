@@ -63,7 +63,7 @@
 (defn create-new-context [*state]
   (assoc *state :context (audio-context.)))
 
-(defn make-graph [graph wave-form {:keys [note cutoff-note on]}]
+(defn make-graph [graph {:keys [note cutoff-note wave-form on]}]
   (let [t (j/get graph :currentTime)
         gain-value (or
                      (j/get-in graph
@@ -82,14 +82,14 @@
                               :Q 4
                               :gain 4
                               :frequency (freq cutoff-note)})
-       2 (oscillator 1 #js {:type wave-form
+       2 (oscillator 1 #js {:type (if (= wave-form "0") "square" "sawtooth")
                             :frequency (freq note)})})))
 
 (defn update-audio-from-state [graph old-audio-params new-audio-params]
   (when (not= old-audio-params new-audio-params)
     (.update graph
              (if new-audio-params
-               (make-graph graph "square" new-audio-params)
+               (make-graph graph new-audio-params)
                #js {}))))
 
 (defn make-click-track-audio-buffer [{:keys [context bpm swing] :as *state}]
@@ -276,9 +276,14 @@
      [:div
       [component-menu-toggle state]
       [:div.input-group
-       [:label
-        [:span #_ {:class "right"} "sqr"]
-        [:input {:type "range" :min 0 :max 1 :step 1}]]
+       (let [wave-form (-> @state :audio-params :wave-form)]
+         [:label
+          (if (= wave-form "0")
+            [:span {:class "right"} "sqr"]
+            [:span "saw"])
+          [:input {:type "range" :min 0 :max 1 :step 1
+                   :value wave-form
+                   :on-change #(swap! state assoc-in [:audio-params :wave-form] (-> % .-target .-value))}]])
        [:label
         [:span #_ {:class "right"} "rez"]
         [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
