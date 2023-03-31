@@ -63,7 +63,7 @@
 (defn create-new-context [*state]
   (assoc *state :context (audio-context.)))
 
-(defn make-graph [graph {:keys [note cutoff-note wave-form on]}]
+(defn make-graph [graph {:keys [note cutoff-note wave-form rez on]}]
   (let [t (j/get graph :currentTime)
         gain-value (or
                      (j/get-in graph
@@ -79,8 +79,8 @@
                          [["setValueAtTime" gain-value t]
                           ["setTargetAtTime" 0 t 0.05]]})))
        1 (biquadFilter 0 #js {:type "lowpass"
-                              :Q 4
-                              :gain 4
+                              :Q rez
+                              :gain rez
                               :frequency (freq cutoff-note)})
        2 (oscillator 1 #js {:type (if (= wave-form "0") "square" "sawtooth")
                             :frequency (freq note)})})))
@@ -284,9 +284,12 @@
           [:input {:type "range" :min 0 :max 1 :step 1
                    :value wave-form
                    :on-change #(swap! state assoc-in [:audio-params :wave-form] (-> % .-target .-value))}]])
-       [:label
-        [:span #_ {:class "right"} "rez"]
-        [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
+       (let [rez (-> @state :audio-params :rez)]
+         [:label
+          [:span (when (< rez 10) {:class "right"}) "rez"]
+          [:input {:type "range" :min 0 :max 20 :step 1
+                   :value rez
+                   :on-change #(swap! state assoc-in [:audio-params :rez] (-> % .-target .-value))}]])]
       [:div.input-group
        [:select {:name "root-note"
                  :value (-> @state :notes :root)
