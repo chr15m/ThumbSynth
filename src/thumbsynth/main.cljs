@@ -244,7 +244,7 @@
      [:p "Set sync mode on your pocket operator to SY4 or SY5
          (sync pass-through) using the top-right button + BPM."]
      [:p "Press play to start the sync signal."]
-     (when (not (on-ios?))
+     (when (not ios)
        [:<>
         [:h3 "Tips"]
         [:p "Huawei phones and maybe others have a 'battery saving' mode
