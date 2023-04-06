@@ -12,7 +12,7 @@
     ["@tonaljs/scale" :as scale]
     ["@tonaljs/note" :refer [midi freq]]
     ["virtual-audio-graph"
-     :refer [gain oscillator biquadFilter default]
+     :refer [gain oscillator biquadFilter bufferSource default]
      :rename {default create-graph}]
     [dopeloop.main :refer [audio-context
                            manage-audio-context-ios
@@ -30,12 +30,12 @@
 
 (def initial-state {:bpm 90 ; persisted
                     :swing 0 ; persisted
-                    :playing false
                     :device-volume 1
                     :audio {:context nil
                             :source nil
                             :buffer nil}
-                    :audio-params {:rez 2
+                    :audio-params {:playing false
+                                   :rez 2
                                    :note "C5"
                                    :cutoff-note "C5"
                                    :wave-form "0"
@@ -66,18 +66,22 @@
 (defn create-new-context [*state]
   (assoc-in *state [:audio :context] (audio-context.)))
 
-(defn make-graph [graph {:keys [note cutoff-note wave-form rez on]}]
-  (let [t (j/get graph :currentTime)
+(defn make-graph [graph {:keys [note cutoff-note wave-form rez on playing]
+                         :as audio-params}]
+  (let [audio-context (j/get graph :audioContext)
+        sample-rate (j/get audio-context :sampleRate)
+        timer-buffer (.createBuffer audio-context 1 1 sample-rate)
+        t (j/get graph :currentTime)
         gain-value (or
                      (j/get-in graph
-                               [ :virtualNodes 0 :audioNode :gain :value])
+                               [:virtualNodes 0 :audioNode :gain :value])
                      0)]
     (j/lit
       {0 (gain "output"
                (if on
                  (j/lit {:gain
                          [["setValueAtTime" gain-value t]
-                          ["linearRampToValueAtTime" 0.5 (+ t 0.1)]]})
+                          ["linearRampToValueAtTime" 0.5 (+ t 0.003)]]})
                  (j/lit {:gain
                          [["setValueAtTime" gain-value t]
                           ["setTargetAtTime" 0 t 0.05]]})))
@@ -86,14 +90,38 @@
                               :gain rez
                               :frequency (freq cutoff-note)})
        2 (oscillator 1 #js {:type (if (= wave-form "0") "square" "sawtooth")
-                            :frequency (freq note)})})))
+                            :frequency (freq note)})
+       3 (bufferSource "output"
+                       (let [previous (j/get-in graph
+                                                [:virtualNodes 3 :audioNode])
+                             loop-start-time (j/get previous :loop-start-time)
+                             loop-start-time (if (> loop-start-time 0)
+                                               loop-start-time
+                                               t)]
+                         #js {:buffer timer-buffer
+                              :loop true
+                              :stopTime (+ t 0.5)
+                              :loop-start-time loop-start-time
+                              :onended
+                              (fn [ev]
+                                (let [current (j/get-in graph
+                                                [:virtualNodes 3 :audioNode])
+                                      target (j/get ev :target)]
+                                  (when (and (= target current) playing)
+                                    (.update graph
+                                             (make-graph graph audio-params))
+                                    (js/console.log "re-making graph"
+                                                    loop-start-time))))}))})))
 
 (defn update-audio-from-state [graph old-audio-params new-audio-params]
   (when (not= old-audio-params new-audio-params)
     (.update graph
-             (if new-audio-params
+             (if (and new-audio-params (:playing new-audio-params))
                (make-graph graph new-audio-params)
-               #js {}))))
+               #js {}))
+    #_ (js/console.log (j/get-in graph [:virtualNodes 3 :audioNode]))
+    #_ (j/assoc-in! graph [:virtualNodes 0 :audioNode :onended]
+                 (fn [ev] (js/console.log "ended" ev)))))
 
 (defn event-pos-to-note-params [midi-notes ev]
   (let [el (j/get ev :currentTarget)
@@ -113,7 +141,7 @@
      :cutoff-note (-> (- 1 vertical) (* 96) (+ 32) note-name)}))
 
 (defn update-oscillator [*state note-params]
-  (update-in *state [:audio-params] merge note-params {:on true}))
+  (update-in *state [:audio-params] merge note-params {:on true :playing true}))
 
 (defn stop-oscillator [*state _ev]
   (assoc-in *state [:audio-params :on] false))
@@ -208,7 +236,7 @@
     scale))
 
 (defn component-main [state]
-  (let [playing (:playing @state)
+  (let [playing (-> @state :audio-params :playing)
         device-volume (:device-volume @state)
         scale (compute-scale @state)
         midi-notes (map #(midi (str % "4")) (j/get scale :notes))]
@@ -277,16 +305,21 @@
          :on-pointer-out #(swap! state stop-oscillator %)
          :on-pointer-up #(swap! state stop-oscillator %)}
         [component-icon (:thumb buttons)]]]
-      [:label
-       [:span #_ {:class "right"} "vol"]
-       [:input {:type "range" :min 0 :max 1 :step 0.01}]]
+      [:div.input-group
+       [:label
+        [:span #_ {:class "right"} "rate"]
+        [:input {:type "range" :min 0 :max 2 :step 1}]]
+       [:label
+        [:span #_ {:class "right"} "vol"]
+        [:input {:type "range" :min 0 :max 1 :step 0.01}]]]
       [:div.input-group
        [:div.highlight.device-warning
         (when (< device-volume 0.9)
           "Set device volume to max for sync.")]
        [:span.rounded [component-icon (:metronome buttons)]]
        [:button.rounded [component-icon (:loop buttons)]]
-       [:button.rounded
+       [:button.rounded {:on-click
+                         #(swap! state update-in [:audio-params :playing] not)}
         [component-icon (if playing
                           (:stop buttons)
                           (:play buttons))]]]]]))
